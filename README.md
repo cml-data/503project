@@ -3,7 +3,7 @@ Final project
 
 ------------------
 
--- Notes from Haleigh:
+Question: How does weather and events affect traffic in Portland?
 
 Potential scrapers:
 1. weather - https://openweathermap.org/city/5746545 - Christy

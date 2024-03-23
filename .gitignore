@@ -1,0 +1,5 @@
+# gitignore
+
+#environment variables - only api key hidden here
+.env
+vars.env
