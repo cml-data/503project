@@ -43,5 +43,5 @@ df_final = df_all.drop(columns=['air_quality', 'last_updated_epoch', 'temp_c', '
 df_final = df_final.rename({'us-epa-index': 'us_epa_index', 'gb-defra-index': 'gb_defra_index'}, axis=1)
 
 # Send dataframe data to current_conditions table
-df_final.to_sql('current_conditions1', con=conn, if_exists='append', index=False)
+df_final.to_sql('current_conditions', con=conn, if_exists='append', index=False)
     
