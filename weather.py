@@ -13,7 +13,7 @@ db = create_engine(conn_string)
 conn = db.connect()
 
 
-# Replace 'API_KEY' with your actual API key from NewsAPI
+# set up the API key and URL to call the weather api
 API_KEY = 'fb3b9eb1459344b2a9924552242303'
 url = f"http://api.weatherapi.com/v1/current.json?key={API_KEY}&q=Portland&aqi=yes"
 response = requests.get(url)
