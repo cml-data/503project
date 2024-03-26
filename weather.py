@@ -6,7 +6,8 @@ import csv
 pd.set_option('display.max_rows', None)
 
 from sqlalchemy import create_engine
-conn_string = 'postgresql://postgres:unsecurepwd1!@host.docker.internal:5432/analysis'
+#conn_string = 'postgresql://postgres:unsecurepwd1!@host.docker.internal:5432/analysis'
+conn_string = 'postgresql://postgres:LrCRabhrawVTSBhQCvWgTgvPqCTJVpgu@monorail.proxy.rlwy.net:54587/postgres'
   
 db = create_engine(conn_string) 
 conn = db.connect()
