@@ -11,5 +11,6 @@ RUN python3 -m pip install sqlalchemy
 RUN ln -s /usr/bin/python3 /usr/bin/python
 
 ADD weather.py /
+ADD astronomy.py /
 
-CMD [ "python", "./weather.py" ]
+CMD python3 weather.py | python3 astronomy.py
