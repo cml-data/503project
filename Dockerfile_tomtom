@@ -1,0 +1,11 @@
+# using jrembold/web2db base image
+FROM jrembold/web2db:latest
+
+# set working directory inside the container
+WORKDIR /app
+
+# copy scraper script into the container
+COPY tomtom.py /app
+
+# command to run the scraper script
+CMD ["python3", "tomtom.py"]
