@@ -67,7 +67,7 @@ def insert_traffic_flow(conn, data):
 # fetch traffic incidents data from the TomTom API
 def fetch_traffic_incidents():
     # TomTom API key
-    API_KEY = "89800236-7eda-41a6-89ea-06e8246c7119"
+    API_KEY = "6JGAhG8TKRPO076GGtGX01KasigzxFR4"
     
     # URL for traffic incidents endpoint
     INCIDENTS_URL = f"https://api.tomtom.com/traffic/services/4/incidentDetails/3/10/en/json?key={API_KEY}"
