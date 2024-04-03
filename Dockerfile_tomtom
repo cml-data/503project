@@ -1,11 +1,15 @@
-# using jrembold/web2db base image
-FROM jrembold/web2db:latest
+# using the official Python image as base
+FROM python:3.9-slim
 
-# set working directory inside the container
+# working directory in the container
 WORKDIR /app
 
-# copy scraper script into the container
-COPY tomtom.py /app
+# copy python script and requirements.txt file into the container
+COPY requirements.txt .
+COPY tomtom.py .
 
-# command to run the scraper script
-CMD ["python3", "tomtom.py"]
+# install dependencies
+RUN pip install --no-cache-dir -r requirements.txt
+
+# run the Python script
+CMD ["python", "tomtom.py"]
