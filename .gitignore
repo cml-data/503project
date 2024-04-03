@@ -1,4 +1,0 @@
-# gitignore
-
-#environment variables - only api key here
-.env
