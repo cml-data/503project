@@ -1,4 +1,4 @@
--- Create table for storing traffic incident data
+-- table for storing traffic incident data
 CREATE TABLE traffic_incidents (
     incident_id SERIAL PRIMARY KEY,
     start_location VARCHAR(255),
@@ -11,7 +11,7 @@ CREATE TABLE traffic_incidents (
     incident_time TIMESTAMP
 );
 
--- Create table for storing traffic flow data
+-- table for storing traffic flow data
 CREATE TABLE traffic_flow (
     flow_id SERIAL PRIMARY KEY,
     segment_id INT,
