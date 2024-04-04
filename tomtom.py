@@ -83,7 +83,7 @@ def fetch_traffic_incidents():
 # fetch traffic flow data from the TomTom API
 def fetch_traffic_flow():
     # TomTom API key
-    API_KEY = "89800236-7eda-41a6-89ea-06e8246c7119"
+    API_KEY = "6JGAhG8TKRPO076GGtGX01KasigzxFR4"
     
     # url for traffic flow endpoint
     FLOW_URL = f"https://api.tomtom.com/traffic/services/4/flowSegmentData/absolute/10/json?key={API_KEY}"
