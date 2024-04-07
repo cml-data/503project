@@ -26,3 +26,17 @@ CREATE TABLE current_conditions (
 	"text" text NULL,
 	icon text NULL
 );
+
+
+CREATE TABLE public.astronomy (
+	date_pulled timestamp WITH time zone DEFAULT NOW(),
+	date date,
+	sunrise text NULL,
+	sunset text NULL,
+	moonrise text NULL,
+	moonset text NULL,
+	moon_phase text NULL,
+	moon_illumination int8 NULL,
+	is_moon_up int8 NULL,
+	is_sun_up int8 NULL
+);
