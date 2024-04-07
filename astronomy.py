@@ -8,12 +8,14 @@ pd.set_option('display.max_rows', None)
 
 from sqlalchemy import create_engine
 #conn_string = 'postgresql://postgres:unsecurepwd1!@host.docker.internal:5432/analysis'
-conn_string = 'postgresql://postgres:LrCRabhrawVTSBhQCvWgTgvPqCTJVpgu@monorail.proxy.rlwy.net:54587/postgres'
-  
-db = create_engine(conn_string) 
+#conn_string = 'postgresql://postgres:LrCRabhrawVTSBhQCvWgTgvPqCTJVpgu@monorail.proxy.rlwy.net:54587/postgres'
+conn_string = 'postgresql://postgres:unsecurepwd1!@project503.cduiwke4ucsq.us-west-2.rds.amazonaws.com:5432/postgres'
+
+db = create_engine(conn_string)
 conn = db.connect()
 
 curr_date = date.today()
+print(curr_date)
 # set up the API key and URL to call the weather api
 API_KEY = 'fb3b9eb1459344b2a9924552242303'
 url = f"https://api.weatherapi.com/v1/astronomy.json?q=Portland&dt={curr_date}&key={API_KEY}"
@@ -27,6 +29,7 @@ if response.status_code == 200:
 
 astro_dict = [data['astronomy']['astro']]
 df_astro = pd.DataFrame.from_dict(astro_dict, orient='columns')
+df_astro.insert(0, "date", curr_date)
 
 # Send dataframe data to astronomy table
 df_astro.to_sql('astronomy', con=conn, if_exists='append', index=False)
