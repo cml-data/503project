@@ -1,0 +1,108 @@
+my vars.env file:
+SITE_URL=https://www.tripcheck.com/DynamicReports/Report/TravelTime
+FILE_NAME=traffic_data 
+DATABASE_URL=noellematthews:1234@localhost:5432/public
+TABLE_NAME=traffic_json
+~                            
+I have since deleted the file name part of my variables, just figured the least amount possible in there the better since i have been struggling with it. 
+I also tried just copying and pasting the url (not adding in the "public", which is the main database for my postgres, also added in a password purposely since i thought that might be the reason (previously was blank), none of it is working. 
+
+my terminal: (I have also tried running without the --network=host and the same thing happens)
+noellematthews@Noelles-Air ~ % docker run --rm --env-file vars.env --network=host jrembold/web2db
+[2024-04-09 06:03:27 ] Getting new data!
+/app/web2json2db.py:44: FutureWarning: Passing literal html to 'read_html' is deprecated and will be removed in a future version. To read from a literal string, wrap it in a 'StringIO' object.
+  data = pd.read_html(resp.content.decode())
+Writing data to file... DONE!
+Writing data to database... Traceback (most recent call last):
+  File "/usr/local/lib/python3.10/dist-packages/sqlalchemy/engine/base.py", line 146, in __init__
+    self._dbapi_connection = engine.raw_connection()
+  File "/usr/local/lib/python3.10/dist-packages/sqlalchemy/engine/base.py", line 3304, in raw_connection
+    return self.pool.connect()
+  File "/usr/local/lib/python3.10/dist-packages/sqlalchemy/pool/base.py", line 449, in connect
+    return _ConnectionFairy._checkout(self)
+  File "/usr/local/lib/python3.10/dist-packages/sqlalchemy/pool/base.py", line 1263, in _checkout
+    fairy = _ConnectionRecord.checkout(pool)
+  File "/usr/local/lib/python3.10/dist-packages/sqlalchemy/pool/base.py", line 712, in checkout
+    rec = pool._do_get()
+  File "/usr/local/lib/python3.10/dist-packages/sqlalchemy/pool/impl.py", line 179, in _do_get
+    with util.safe_reraise():
+  File "/usr/local/lib/python3.10/dist-packages/sqlalchemy/util/langhelpers.py", line 146, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/usr/local/lib/python3.10/dist-packages/sqlalchemy/pool/impl.py", line 177, in _do_get
+    return self._create_connection()
+  File "/usr/local/lib/python3.10/dist-packages/sqlalchemy/pool/base.py", line 390, in _create_connection
+    return _ConnectionRecord(self)
+  File "/usr/local/lib/python3.10/dist-packages/sqlalchemy/pool/base.py", line 674, in __init__
+    self.__connect()
+  File "/usr/local/lib/python3.10/dist-packages/sqlalchemy/pool/base.py", line 900, in __connect
+    with util.safe_reraise():
+  File "/usr/local/lib/python3.10/dist-packages/sqlalchemy/util/langhelpers.py", line 146, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/usr/local/lib/python3.10/dist-packages/sqlalchemy/pool/base.py", line 896, in __connect
+    self.dbapi_connection = connection = pool._invoke_creator(self)
+  File "/usr/local/lib/python3.10/dist-packages/sqlalchemy/engine/create.py", line 643, in connect
+    return dialect.connect(*cargs, **cparams)
+  File "/usr/local/lib/python3.10/dist-packages/sqlalchemy/engine/default.py", line 617, in connect
+    return self.loaded_dbapi.connect(*cargs, **cparams)
+  File "/usr/local/lib/python3.10/dist-packages/psycopg2/__init__.py", line 122, in connect
+    conn = _connect(dsn, connection_factory=connection_factory, **kwasync)
+psycopg2.OperationalError: connection to server at "localhost" (::1), port 5432 failed: Connection refused
+	Is the server running on that host and accepting TCP/IP connections?
+connection to server at "localhost" (127.0.0.1), port 5432 failed: Connection refused
+	Is the server running on that host and accepting TCP/IP connections?
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/app/web2json2db.py", line 124, in <module>
+    main()
+  File "/app/web2json2db.py", line 115, in main
+    write_db(jdata, DATABASE_URL, TABLE_NAME)
+  File "/app/web2json2db.py", line 86, in write_db
+    con = engine.connect()
+  File "/usr/local/lib/python3.10/dist-packages/sqlalchemy/engine/base.py", line 3280, in connect
+    return self._connection_cls(self)
+  File "/usr/local/lib/python3.10/dist-packages/sqlalchemy/engine/base.py", line 148, in __init__
+    Connection._handle_dbapi_exception_noconnection(
+  File "/usr/local/lib/python3.10/dist-packages/sqlalchemy/engine/base.py", line 2444, in _handle_dbapi_exception_noconnection
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "/usr/local/lib/python3.10/dist-packages/sqlalchemy/engine/base.py", line 146, in __init__
+    self._dbapi_connection = engine.raw_connection()
+  File "/usr/local/lib/python3.10/dist-packages/sqlalchemy/engine/base.py", line 3304, in raw_connection
+    return self.pool.connect()
+  File "/usr/local/lib/python3.10/dist-packages/sqlalchemy/pool/base.py", line 449, in connect
+    return _ConnectionFairy._checkout(self)
+  File "/usr/local/lib/python3.10/dist-packages/sqlalchemy/pool/base.py", line 1263, in _checkout
+    fairy = _ConnectionRecord.checkout(pool)
+  File "/usr/local/lib/python3.10/dist-packages/sqlalchemy/pool/base.py", line 712, in checkout
+    rec = pool._do_get()
+  File "/usr/local/lib/python3.10/dist-packages/sqlalchemy/pool/impl.py", line 179, in _do_get
+    with util.safe_reraise():
+  File "/usr/local/lib/python3.10/dist-packages/sqlalchemy/util/langhelpers.py", line 146, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/usr/local/lib/python3.10/dist-packages/sqlalchemy/pool/impl.py", line 177, in _do_get
+    return self._create_connection()
+  File "/usr/local/lib/python3.10/dist-packages/sqlalchemy/pool/base.py", line 390, in _create_connection
+    return _ConnectionRecord(self)
+  File "/usr/local/lib/python3.10/dist-packages/sqlalchemy/pool/base.py", line 674, in __init__
+    self.__connect()
+  File "/usr/local/lib/python3.10/dist-packages/sqlalchemy/pool/base.py", line 900, in __connect
+    with util.safe_reraise():
+  File "/usr/local/lib/python3.10/dist-packages/sqlalchemy/util/langhelpers.py", line 146, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/usr/local/lib/python3.10/dist-packages/sqlalchemy/pool/base.py", line 896, in __connect
+    self.dbapi_connection = connection = pool._invoke_creator(self)
+  File "/usr/local/lib/python3.10/dist-packages/sqlalchemy/engine/create.py", line 643, in connect
+    return dialect.connect(*cargs, **cparams)
+  File "/usr/local/lib/python3.10/dist-packages/sqlalchemy/engine/default.py", line 617, in connect
+    return self.loaded_dbapi.connect(*cargs, **cparams)
+  File "/usr/local/lib/python3.10/dist-packages/psycopg2/__init__.py", line 122, in connect
+    conn = _connect(dsn, connection_factory=connection_factory, **kwasync)
+sqlalchemy.exc.OperationalError: (psycopg2.OperationalError) connection to server at "localhost" (::1), port 5432 failed: Connection refused
+	Is the server running on that host and accepting TCP/IP connections?
+connection to server at "localhost" (127.0.0.1), port 5432 failed: Connection refused
+	Is the server running on that host and accepting TCP/IP connections?
+
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+noellematthews@Noelles-Air ~ % 
