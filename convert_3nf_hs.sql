@@ -18,6 +18,10 @@ copy pdx_events
 from '/Users/Haleigh/repos/503project/update_pdx_events.csv'
 delimiter ',' csv header;
 
+-- the above didn't work, had to open a new terminal and run: 
+-- psql --host=localhost --port=54322 --username=postgres --password (enter password)
+-- \copy pdx_events from '/Users/Haleigh/Documents/MSDS/Data Engineering/project/update_pdx_events.csv' WITH DELIMITER ',' CSV HEADER;
+
 -- ------------------------
 -- ------------------------
 
