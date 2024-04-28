@@ -1,0 +1,94 @@
+{
+  "openapi" : "3.0.1",
+  "info" : {
+    "title" : "project503_api",
+    "version" : "2024-04-28 18:18:42UTC"
+  },
+  "servers" : [ {
+    "url" : "https://wuw2t595v2.execute-api.us-west-2.amazonaws.com/{basePath}",
+    "variables" : {
+      "basePath" : {
+        "default" : ""
+      }
+    }
+  } ],
+  "paths" : {
+    "/analysis" : {
+      "get" : {
+        "summary" : "Get data used for analysis.  All dates returned if dates not specified.",
+        "parameters": [
+          {
+             "in": "query",
+              "name": "startDate",
+              "schema": {
+                  "type": "string"
+              },
+              "description": "Start date of data to retrieve (YYYY-MM-DD).  Optional"
+          },
+          {
+             "in": "query",
+             "name": "endDate",
+             "schema": {
+                 "type": "string"
+             },
+             "description": "End date of data to retrieve (YYYY-MM-DD).  Optional"
+          }
+      ],
+        "responses" : {
+          "default" : {
+            "description" : "Default response for GET /analysis"
+          }
+        },
+        "x-amazon-apigateway-integration" : {
+          "payloadFormatVersion" : "2.0",
+          "type" : "aws_proxy",
+          "httpMethod" : "POST",
+          "uri" : "arn:aws:apigateway:us-west-2:lambda:path/2015-03-31/functions/arn:aws:lambda:us-west-2:533267101297:function:project503_rds_query/invocations",
+          "connectionType" : "INTERNET"
+        }
+      }
+    },
+    "/project503_rds_query" : {
+      "get" : {
+        "summary" : "Get all project data.  All dates returned if dates not specified.",
+        "parameters": [
+          {
+             "in": "query",
+              "name": "startDate",
+              "schema": {
+                  "type": "string"
+              },
+              "description": "Start date of data to retrieve (YYYY-MM-DD). Optional"
+          },
+          {
+             "in": "query",
+             "name": "endDate",
+             "schema": {
+                 "type": "string"
+             },
+             "description": "End date of data to retrieve (YYYY-MM-DD). Optional"
+          }
+      ],
+        "responses" : {
+          "default" : {
+            "description" : "Default response for GET /project503_rds_query"
+          }
+        },
+        "x-amazon-apigateway-integration" : {
+          "payloadFormatVersion" : "2.0",
+          "type" : "aws_proxy",
+          "httpMethod" : "POST",
+          "uri" : "arn:aws:apigateway:us-west-2:lambda:path/2015-03-31/functions/arn:aws:lambda:us-west-2:533267101297:function:project503_rds_query/invocations",
+          "connectionType" : "INTERNET"
+        }
+      }
+    }
+  },
+  "x-amazon-apigateway-cors" : {
+    "allowMethods" : [ "GET" ],
+    "maxAge" : 0,
+    "allowCredentials" : false,
+    "allowOrigins" : [ "*" ]
+  },
+  "x-amazon-apigateway-importexport-version" : "1.0"
+}
