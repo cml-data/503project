@@ -1,0 +1,442 @@
+---
+title: "503_Project"
+author: "Haleigh Schwartz"
+date: "2024-04-26"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+#load libraries, set wd
+library(tidyverse)
+library(survival)
+library(skimr)
+library(DataExplorer)
+library(fitdistrplus)
+library(broom)
+library(dplyr)
+library(maps)
+library(lubridate)
+library(tidygeocoder)
+
+setwd("/Users/Haleigh/repos/503project")
+```
+
+```{r}
+#load data
+events = read_csv("clean_pdx_events_042624.csv")
+ast = read_csv("astronomy.csv")
+weather = read_csv("weather_conditions.csv")
+traffic = read_csv("traffic_data_w_timestamps.csv")
+```
+
+```{r}
+#clean data, prep for joining
+
+events = events %>%
+  #separate out address in case I want to map it later
+  separate(location, c("location_name","location_address"),",") %>%
+  mutate(location_address = paste(location_address,", Portland, OR",sep=""))
+
+#forgot to do this
+events = events %>%
+  dplyr::select(-date_of_scrape) %>%
+  rename(time_event = time) #couldn't get it to separate into start and end times. (it woudln't recognize the "-" which is what I was trying to split it on. wanted to convert start and end times to time data type)
+
+ast = ast %>%
+  dplyr::select(-date_pulled)
+
+weather = weather %>%
+  rename(timestamp = date) %>% 
+  mutate(date = as.Date(timestamp), #isolate date
+         time_weather = format(timestamp,"%H:%M:%S"), #isolate time
+         is_day = as.factor(is_day), #convert a bunch to factor
+         wind_dir = as.factor(wind_dir),
+         uv=as.factor(uv),
+         us_epa_index = as.factor(us_epa_index),
+         gb_defra_index = as.factor(gb_defra_index),
+         text = as.factor(text)) %>%
+  dplyr::select(-timestamp)
+
+traffic = traffic %>%
+  #remove the extra "
+  mutate(route = str_remove_all(route, "\""),
+         free_flow = str_remove_all(free_flow, "\""),
+         travel_time = str_remove_all(travel_time, "\"")) %>%
+  #remove rows that don't actually have data in them
+  filter(route != "I-205 NB"  & route != "SB"  & route != "NB"  & route != "EB"  & route != "WB"  & route != "null" & route != "OR126 WB" & route != "OR35 SB") %>%
+  #convert to NA where necessary
+  mutate(free_flow = ifelse(free_flow == "null", NA, free_flow),
+         travel_time = ifelse(travel_time == "null" | travel_time == "Data Not Available.", NA, travel_time)) %>%
+  #remove chr from observations, convert to numeric
+  rename("free_flow(min)" = free_flow) %>%
+  rename("travel_time(min)" = travel_time)  %>%
+  mutate("free_flow(min)" = str_remove_all(`free_flow(min)`, "min"),
+         "travel_time(min)" = as.numeric(str_remove_all(`travel_time(min)`, "min")),
+         #convert time stamp to more usable format for joining ds
+         "timestamp" = mdy_hm(`time stamp`),
+         date = as.Date(timestamp),
+         time_traffic = format(timestamp, "%H:%M:%S")) %>%
+  dplyr::select(-`time stamp`, -timestamp)
+
+```
+
+```{r}
+#join all at date columns, double check by making sure cols add up
+dim(events)
+dim(ast)
+dim(weather)
+dim(traffic)
+dim(join)
+dim(join2)
+dim(join3)
+
+join = full_join(events, ast, by=c("date" = "date")) #ast didn't start until 3/27, consider throwing out earlier event dates (3/23 to 3/26)
+join2 = full_join(join, weather, by=c("date" = "date"))
+join3 = full_join(join2, traffic, by=c("date" = "date"))#very big, consider throwing out all NAs for computation. 
+
+#traffic didn't start until 4/9, throw out before then
+join3 = join3 %>%
+  filter(date >= "2024-04-09")
+
+ds = na.omit(join3) #size went down to about 1/2 mill, much better
+
+ds
+```
+
+
+```{r}
+#some eda
+
+ds = ds %>%
+  mutate(`free_flow(min)` = as.numeric(`free_flow(min)`)) #forgot to do this earlier
+
+#look at traffic trends each hour per route
+route_plot = ds %>%
+  mutate(time_diff = `travel_time(min)` - `free_flow(min)`) %>%
+  group_by(time_traffic, route) %>%
+  summarize(
+    mean_diff = mean(time_diff)
+  ) %>%
+  ggplot()+
+  geom_col(aes(x=time_traffic, y=mean_diff))+
+  facet_wrap(.~route)
+
+ggsave("/Users/Haleigh/repos/503project/route_plot.png", plot=route_plot, width=15, height=10)
+
+```
+
+
+```{r}
+
+#select only routes that have mean_diff significantly greater than 0
+sig_routes = list()
+
+all_routes = unique(ds$route)
+all_routes = all_routes[all_routes != "I-5 SB SW Terwilliger Blvd TO ORE217"] #loop was breaking at this one, so removed
+
+for (i in seq_along(all_routes)) {
+  #initialize x
+  x = all_routes[[i]]
+
+  #find mean traffic time each hour
+  ds_mean_traffic = ds %>%
+    filter(route == x) %>%
+    dplyr::select(`free_flow(min)`, `travel_time(min)`, time_traffic) %>%
+    group_by(time_traffic) %>%
+    summarize(
+      mean_travel_time = mean(`travel_time(min)`) 
+    )
+  
+  #find mean flow time each hour
+  ds_mean_freeflow = ds %>%
+      filter(route == x) %>%
+    dplyr::select(`free_flow(min)`, `travel_time(min)`, time_traffic) %>%
+    group_by(time_traffic) %>%
+    summarize(
+      mean_free_flow = mean(`free_flow(min)`) 
+    )
+    
+  #t test to compare
+  p_value = t.test(x=ds_mean_traffic$mean_travel_time, y=ds_mean_freeflow$mean_free_flow)$p.value
+  
+  #save to new list only if significant
+  if (p_value <= 0.05) {
+    length = length(sig_routes)
+    new_length = length+1
+    sig_routes[new_length] = x
+  }
+}
+
+
+#see which ones are not significant, move forward with only sig ones
+setdiff(all_routes, sig_routes)
+#only "I-5 SB SW Terwilliger Blvd TO ORE217" and "US26 EB NW 185th Ave TO ORE217" are not significant. move forward with those
+```
+
+```{r}
+#save new info
+ds_sig = ds %>%
+  filter(route != "I-5 SB SW Terwilliger Blvd TO ORE217" & route != "US26 EB NW 185th Ave TO ORE217") %>%
+  mutate(time_diff = `travel_time(min)` - `free_flow(min)`, perc_diff = `travel_time(min)`/`free_flow(min)`)
+
+names = names(ds_sig)
+
+ds_sig
+
+```
+
+
+```{r}
+#playing around with normal fit
+ds1 = ds %>%
+  filter(route == "I-5 NB SW Wilsonville Rd TO ORE99E via I-205 NB")
+
+norm = fitdist(ds1$`travel_time(min)`, distr="norm", method="mle")
+
+plot(norm)
+
+```
+
+
+```{r}
+#visualizing the differences for all routes
+
+#save this plot!
+venue_plot = ds_sig %>%
+  ggplot() +
+  geom_boxplot(aes(x=fct_reorder(location_name, perc_diff), y=perc_diff)) + 
+  theme_classic() +
+  labs(title="Percent increase in traffic by venue")+
+  xlab("Venue name")+
+  ylab("Percent increase in traffic") +
+  theme(
+        axis.text.x = element_text(angle=45, hjust=1)
+        )
+ggsave("/Users/Haleigh/repos/503project/venue_plot.png", venue_plot, width=10)
+
+#chnaged out x for each variable in names
+so2_plot = ds_sig %>%
+    ggplot() +
+    geom_point(aes(x=so2, y=perc_diff)) + 
+    theme_classic() +
+    labs(title="Percent increase in traffic by SO2")+
+    xlab("SO2 (sulfur dioxide)")+
+    ylab("Percent increase in traffic") +
+    theme(
+          axis.text.x = element_text(angle=45, hjust=1)
+          )
+ggsave("/Users/Haleigh/repos/503project/so2_plot.png", so2_plot, width=10)
+
+#possible pressure_in, location_name, time_traffic, sunset, moonrise, moonphase, temp_f, wind_mph, pressure_mb, vis_miles, gust_mph, so2, pm2_5, pm10
+
+```
+
+```{r}
+#logistic regression with chosen variables
+logisticMod_all = glm(perc_diff~pressure_in+humidity+no2+o3+location_name+sunrise+time_traffic+sunset+moonrise+moonset+moon_phase+temp_f+wind_mph+pressure_mb+vis_miles+gust_mph+so2+pm2_5+pm10+route, data=ds_sig, family="poisson")
+summary(logisticMod_all)
+
+#traffic is significant at times: 01:00:00, 03:00:00-23:00:00
+#all routes are sig except routeI-5 NB SW Iowa St TO SR14, routeI-84 EB at MP 265 La Grande TO I-84 EB at North Powder, routeI-84 EB at MP 265 La Grande TO I-84 EB at North Powder, routeI-84 WB at Baker City TO I-84 WB at North Powder , routeI-84 WB at La Grande TO I-84 WB at Exit 216 / OR331 , routeI-84 WB at North Powder TO I-84 WB at Exit 265 La Grande, routeI-84 WB NE 28th Ave TO SR14 via I-5 NB, routeUS26 EB NW 185th Ave TO I-405 
+
+
+#final model (with only significant variables)
+logMod3 = glm(perc_diff~time_traffic+route, data=ds_sig, family="poisson")
+summary(logMod3)
+
+#see google slides for what is significant (similar to above)
+
+
+#predict data
+#first get sig routes only
+sig_routes = ds_sig %>%
+  filter(route != "I-5 NB SW Iowa St TO SR14") %>%
+  filter(route != "I-84 EB at MP 265 La Grande TO I-84 EB at North Powder") %>%
+  filter(route !="I-84 EB at North Powder TO I-84 EB at Baker City") %>%
+  filter(route !="I-84 WB at Baker City TO I-84 WB at North Powder") %>%
+  filter(route !="I-84 WB at La Grande TO I-84 WB at Exit 216 / OR331") %>%
+  filter(route !="I-84 WB at North Powder TO I-84 WB at Exit 265 La Grande") %>%
+  filter(route !="I-84 WB NE 28th Ave TO SR14 via I-5 NB") %>%
+  filter(route !="US26 EB NW 185th Ave TO I-405")%>%
+  dplyr::select(route)
+
+sig_routes = unique(sig_routes$route)
+
+#then take random sample to match size of time data (24)
+sig_routes_24 = sample_n(tibble(sig_routes), 24)
+
+#set up prediction df
+predict_df = data.frame(time_traffic = unique(ds_sig$time_traffic), route = sig_routes_24)
+predict_df = predict_df %>%
+  rename(route = sig_routes)
+
+#predict
+predict_model = predict.glm(logMod3,predict_df,type="response")
+
+#visualize
+final_prediction = data.frame(predict_df, predict_model)
+final_prediction = final_prediction %>%
+  rename(predicted_perc_increase = predict_model)
+write_csv(final_prediction, "/Users/Haleigh/repos/503project/final_prediction.csv")
+
+
+#repeat but predict for all data then join to ds
+rep_time = rep(unique(ds_sig$time_traffic),42)
+
+sig_routes = sig_routes %>% tibble(sig_routes) %>%
+  mutate(freq = 24) %>%
+  dplyr::select(-.)
+
+rep_sig_routes = sig_routes[rep(seq.int(1,nrow(sig_routes)), sig_routes$freq), 1]
+
+total_predict_df = data.frame(time_traffic = rep_time, route = rep_sig_routes)
+total_predict_df = total_predict_df %>%
+  rename(route = sig_routes)
+
+total_predict_model = predict.glm(logMod3,total_predict_df,type="response")
+
+total_final_prediction = data.frame(total_predict_df, total_predict_model)
+total_final_prediction = total_final_prediction %>%
+  rename(predicted_perc_increase = total_predict_model)
+
+#join to all data (ds)
+update_pdx_events = full_join(ds, total_final_prediction, by=c("route" = "route", "time_traffic" = "time_traffic"))
+
+write_csv(update_pdx_events, "/Users/Haleigh/repos/503project/update_pdx_events.csv")
+
+#join to just sig data (ds_sig)
+sig_routes2 = ds_sig %>%
+  filter(route != "I-5 NB SW Iowa St TO SR14") %>%
+  filter(route != "I-84 EB at MP 265 La Grande TO I-84 EB at North Powder") %>%
+  filter(route !="I-84 EB at North Powder TO I-84 EB at Baker City") %>%
+  filter(route !="I-84 WB at Baker City TO I-84 WB at North Powder") %>%
+  filter(route !="I-84 WB at La Grande TO I-84 WB at Exit 216 / OR331") %>%
+  filter(route !="I-84 WB at North Powder TO I-84 WB at Exit 265 La Grande") %>%
+  filter(route !="I-84 WB NE 28th Ave TO SR14 via I-5 NB") %>%
+  filter(route !="US26 EB NW 185th Ave TO I-405")
+
+sig_update_pdx_events = full_join(sig_routes2, total_final_prediction, by=c("route" = "route", "time_traffic" = "time_traffic"))
+
+write_csv(sig_update_pdx_events, "/Users/Haleigh/repos/503project/sig_update_pdx_events.csv")
+
+#-----------------
+
+#try per route
+ds1 = ds_sig %>%
+  filter(route=="US26 WB Zoo Bridge TO ORE217")
+
+logMod3 = glm(perc_diff~pressure_in+humidity+no2+o3+location_name+sunrise+sunset+moonrise+moonset+moon_phase+temp_f+wind_mph+pressure_mb+vis_miles+gust_mph+so2+pm2_5+pm10, data=ds1, family="poisson")
+summary(logMod3)
+
+#take out estimate, find log odds
+logMod3_coeffs = summary(logMod3)$coefficients
+dim(logMod3_coeffs)
+
+coeffs_only = summary(logMod3)$coefficients[1:36]
+coeffs_exp = exp(coeffs_only) #confirmed that they are all about 1
+
+```
+
+
+
+
+```{r}
+#plot location address on map of portland. color by perc_diff
+
+library(ggspatial)
+library(rnaturalearth)
+library(rnaturalearthdata)
+library(sf)
+
+
+#get portland data
+county = map_data("county")
+
+county = county %>%
+  filter(region == "oregon") %>%
+  filter(subregion == "multnomah")
+
+#get lat and lon for each address in ds
+address = as.data.frame(unique(ds_sig$location_address))
+
+address = address %>%
+ geocode(
+`unique(ds_sig$location_address)`, method = "osm", lat = latitude, long = longitude, full_results = TRUE)
+
+#prep for joining
+address = address %>%
+  rename(location_address = `unique(ds_sig$location_address)`) 
+
+#find log change so plots better
+ds_log_perc_change = ds_sig %>%
+  group_by(location_address) %>%
+  summarize(mean_perc_change = mean(perc_diff)) %>%
+  mutate(log_perc_change = log10(mean_perc_change))
+
+ds_log_perc_change = ds_log_perc_change %>%
+  mutate(location_address = str_remove_all(location_address, "\""))
+
+#join
+join_location_perc = full_join(address, ds_log_perc_change, by=c("location_address"="location_address"))
+
+
+#not going to use, try leaflet
+county %>%
+  ggplot()+
+    geom_polygon(aes(x=long, y=lat, group=group),
+                color="black") +
+  geom_point(data=address, aes(x=longitude,y=latitude), color="red")+
+  labs(title="Weather is the most common reason for cancelling flights")+
+  theme_classic()+
+  theme(
+    axis.line = element_blank(),
+    axis.ticks = element_blank(),
+    axis.title = element_blank()
+  ) 
+
+#leaflet
+library(leaflet)
+
+#tried adding "color = ~pal(log_perc_change)" to addCircleMarkers, but couldn't get it to work
+pal <- colorNumeric(
+  palette = "Greens",
+  domain = join_location_perc$log_perc_change)
+
+#map, but colors aren't scaled
+m <- leaflet() %>% setView(lng = -122.6, lat = 45.55, zoom = 12)
+m %>% addProviderTiles(providers$Esri.NatGeoWorldMap) %>%
+  addCircleMarkers(lng=join_location_perc$longitude, lat =join_location_perc$latitude, fillColor=~pal(log_perc_change))
+
+```
+
+
+```{r}
+#try above with the routes
+routes = as.data.frame(unique(ds_sig$route))
+
+routes = routes %>%
+  geocode(`unique(ds_sig$route)`,method = "osm", lat = latitude, long = longitude, full_results = TRUE) 
+
+routes #didn't work
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
